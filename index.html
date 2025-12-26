@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fosa de Bronze - Joc Educatiu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .ancient-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        .crucible-container {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto;
+        }
+
+        /* Forma del crisol per retallar el contingut */
+        .crucible-mask {
+            position: absolute;
+            inset: 0;
+            clip-path: polygon(10% 0%, 90% 0%, 80% 100%, 20% 100%);
+            background: #e5e7eb; /* Color de fons del crisol buit */
+            z-index: 5;
+            overflow: hidden;
+            border-bottom: 8px solid #374151;
+        }
+
+        /* Marc exterior del crisol */
+        .crucible-border {
+            position: absolute;
+            inset: 0;
+            background: #4b5563;
+            clip-path: polygon(10% 0%, 90% 0%, 80% 100%, 20% 100%);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.3;
+            border: 4px solid #1f2937;
+        }
+
+        /* Capes de metall */
+        .layer {
+            position: absolute;
+            width: 100%;
+            left: 0;
+            transition: height 0.4s ease, bottom 0.4s ease, opacity 0.5s ease;
+        }
+
+        #layer-copper { z-index: 6; bottom: 0; }
+        #layer-tin { z-index: 7; }
+        #layer-bronze { z-index: 8; bottom: 0; height: 0; opacity: 0; }
+
+        .bg-copper { background-color: #d97706; } /* Taronja Coure */
+        .bg-tin { background-color: #94a3b8; }    /* Gris Estany */
+        .bg-bronze { 
+            background: linear-gradient(to top, #b45309, #fbbf24);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @keyframes shine {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .animate-shine {
+            animation: shine 0.8s infinite;
+        }
+
+        input[type=range] {
+            accent-color: #b45309;
+        }
+
+        /* Modal Styles */
+        #success-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-amber-800">
+        <!-- Capçalera -->
+        <div class="bg-amber-800 p-6 text-white text-center">
+            <h1 class="ancient-title text-3xl md:text-4xl mb-1 uppercase tracking-widest">Fosa de Bronze</h1>
+            <p class="text-amber-100 text-sm md:text-base">Combina el coure i l'estany per forjar la història.</p>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Àrea Visual del Crisol -->
+            <div class="flex flex-col items-center justify-center bg-stone-100 rounded-2xl p-6 border-2 border-stone-200">
+                <div class="crucible-container mb-6">
+                    <!-- Contenidor de capes amb la forma del crisol -->
+                    <div class="crucible-mask">
+                        <!-- Coure a la base -->
+                        <div id="layer-copper" class="layer bg-copper"></div>
+                        <!-- Estany a sobre del coure -->
+                        <div id="layer-tin" class="layer bg-tin"></div>
+                        <!-- Bronze que ho cobreix tot en fondre -->
+                        <div id="layer-bronze" class="layer bg-bronze"></div>
+                    </div>
+                    <!-- Marc decoratiu -->
+                    <div class="crucible-border"></div>
+                    <!-- Efectes d'espurnes -->
+                    <div id="sparks-container" class="absolute inset-0 z-20 pointer-events-none"></div>
+                </div>
+                
+                <div class="text-center w-full space-y-3">
+                    <div class="flex justify-between text-sm font-bold text-gray-600 px-4">
+                        <span>Massa Total: <span id="display-total">0</span> kg</span>
+                    </div>
+                    <!-- Barra de percentatges -->
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden flex border border-gray-300">
+                        <div id="bar-copper" class="bg-copper h-full transition-all duration-300" style="width: 0%"></div>
+                        <div id="bar-tin" class="bg-tin h-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs font-bold text-gray-500 px-2 uppercase tracking-tight">
+                        <span id="perc-copper">Coure: 0%</span>
+                        <span id="perc-tin">Estany: 0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-col space-y-6">
+                <div class="space-y-4">
+                    <label class="block">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-amber-900 font-bold flex items-center uppercase text-xs">
+                                <span class="w-4 h-4 bg-copper rounded-sm mr-2 shadow-sm border border-amber-900/20"></span> Coure (kg)
+                            </span>
+                            <span id="val-copper" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-mono font-bold">0</span>
+                        </div>
+                        <input type="range" id="input-copper" min="0" max="100" value="0" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </label>
+
+                    <label class="block">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-slate-600 font-bold flex items-center uppercase text-xs">
+                                <span class="w-4 h-4 bg-tin rounded-sm mr-2 shadow-sm border border-slate-400"></span> Estany (kg)
+                            </span>
+                            <span id="val-tin" class="bg-slate-100 text-slate-800 px-3 py-1 rounded-full font-mono font-bold">0</span>
+                        </div>
+                        <input type="range" id="input-tin" min="0" max="25" value="0" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </label>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-sm text-amber-900 leading-relaxed shadow-sm">
+                    <strong>Consell de l'artesà:</strong> Per obtenir el millor bronze, necessites que el coure sigui aproximadament el <strong>88-90%</strong> de la barreja total.
+                </div>
+
+                <button id="btn-melt" class="w-full py-4 bg-amber-700 hover:bg-amber-800 text-white font-bold text-xl rounded-xl shadow-lg transform active:scale-95 transition-all uppercase tracking-wider">
+                    FONDRE METALLS
+                </button>
+            </div>
+        </div>
+
+        <!-- Missatges de Feedback -->
+        <div id="message-box" class="hidden p-6 text-center animate-pulse-short border-t-2 border-stone-100">
+            <h2 id="message-title" class="text-2xl font-black mb-1 uppercase tracking-tight"></h2>
+            <p id="message-text" class="text-gray-700 font-medium"></p>
+        </div>
+    </div>
+
+    <!-- Info Educativa -->
+    <div class="max-w-3xl mx-auto mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-4 rounded-xl shadow text-center border-b-4 border-amber-500">
+            <h3 class="text-xs font-bold text-amber-800 uppercase">Ideal</h3>
+            <p class="text-lg font-black text-amber-600">88% - 90% Coure</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center border-b-4 border-slate-400">
+            <h3 class="text-xs font-bold text-slate-500 uppercase">Proporció</h3>
+            <p class="text-sm text-gray-600">L'estany dona duresa</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center border-b-4 border-amber-900">
+            <h3 class="text-xs font-bold text-amber-900 uppercase">Resultat</h3>
+            <p class="text-sm text-gray-600">Bronze Brillant</p>
+        </div>
+    </div>
+
+    <!-- Finestra Emergent (Modal) -->
+    <div id="success-modal">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border-4 border-amber-600 animate-bounce-short">
+            <div class="mb-4 flex justify-center">
+                <div class="bg-amber-100 p-4 rounded-full">
+                    <svg class="w-12 h-12 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+            </div>
+            <h2 class="ancient-title text-2xl font-bold text-amber-900 mb-2">REPTE SUPERAT!</h2>
+            <div class="bg-amber-50 rounded-xl p-4 border border-amber-200 mb-6">
+                <p class="text-amber-800 text-sm mb-2">La contrasenya per superar aquest repte i accedir al següent és:</p>
+                <p class="text-3xl font-black text-amber-900 tracking-widest uppercase">bronze</p>
+            </div>
+            <button id="close-modal" class="w-full py-3 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl transition-colors">
+                TANCAR
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const inputCopper = document.getElementById('input-copper');
+        const inputTin = document.getElementById('input-tin');
+        const valCopper = document.getElementById('val-copper');
+        const valTin = document.getElementById('val-tin');
+        const displayTotal = document.getElementById('display-total');
+        const percCopper = document.getElementById('perc-copper');
+        const percTin = document.getElementById('perc-tin');
+        const barCopper = document.getElementById('bar-copper');
+        const barTin = document.getElementById('bar-tin');
+        
+        const layerCopper = document.getElementById('layer-copper');
+        const layerTin = document.getElementById('layer-tin');
+        const layerBronze = document.getElementById('layer-bronze');
+
+        const btnMelt = document.getElementById('btn-melt');
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const sparksContainer = document.getElementById('sparks-container');
+        
+        const successModal = document.getElementById('success-modal');
+        const closeModal = document.getElementById('close-modal');
+
+        const MAX_CAPACITY = 125; 
+
+        function updateUI() {
+            const copper = parseInt(inputCopper.value);
+            const tin = parseInt(inputTin.value);
+            const total = copper + tin;
+
+            valCopper.textContent = copper;
+            valTin.textContent = tin;
+            displayTotal.textContent = total;
+
+            // Reset l'estat si es canvien els valors
+            layerBronze.style.height = '0%';
+            layerBronze.style.opacity = '0';
+            messageBox.classList.add('hidden');
+            clearSparks();
+
+            if (total > 0) {
+                const pCopper = ((copper / total) * 100).toFixed(1);
+                const pTin = ((tin / total) * 100).toFixed(1);
+
+                percCopper.textContent = `Coure: ${pCopper}%`;
+                percTin.textContent = `Estany: ${pTin}%`;
+
+                barCopper.style.width = `${pCopper}%`;
+                barTin.style.width = `${pTin}%`;
+
+                const copperH = (copper / MAX_CAPACITY) * 100;
+                const tinH = (tin / MAX_CAPACITY) * 100;
+
+                layerCopper.style.height = `${copperH}%`;
+                layerCopper.style.bottom = '0%';
+
+                layerTin.style.height = `${tinH}%`;
+                layerTin.style.bottom = `${copperH}%`;
+            } else {
+                percCopper.textContent = `Coure: 0%`;
+                percTin.textContent = `Estany: 0%`;
+                barCopper.style.width = `0%`;
+                barTin.style.width = `0%`;
+                layerCopper.style.height = `0%`;
+                layerTin.style.height = `0%`;
+            }
+        }
+
+        function createSparks() {
+            for (let i = 0; i < 30; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'sparkle animate-shine';
+                spark.style.left = Math.random() * 100 + '%';
+                spark.style.top = Math.random() * 100 + '%';
+                spark.style.animationDelay = Math.random() * 0.5 + 's';
+                sparksContainer.appendChild(spark);
+            }
+        }
+
+        function clearSparks() {
+            sparksContainer.innerHTML = '';
+        }
+
+        function handleMelt() {
+            const copper = parseInt(inputCopper.value);
+            const tin = parseInt(inputTin.value);
+            const total = copper + tin;
+
+            if (total < 10) {
+                showMessage("Cal més metall!", "Posa més coure i estany per poder omplir el motlle i fer una fosa real.", "text-orange-600", "bg-orange-50");
+                return;
+            }
+
+            const pCopper = (copper / total) * 100;
+            const totalHeight = ((copper + tin) / MAX_CAPACITY) * 100;
+            layerBronze.style.height = `${totalHeight}%`;
+            layerBronze.style.opacity = '1';
+
+            if (pCopper >= 87.5 && pCopper <= 91) {
+                createSparks();
+                showMessage("BRONZE PERFECTE!", "Has aconseguit la barreja ideal!", "text-amber-600", "bg-amber-50 border-amber-200");
+                
+                // Mostrar la finestra emergent després d'un petit retard
+                setTimeout(() => {
+                    successModal.style.display = 'flex';
+                }, 1000);
+                
+            } else if (pCopper > 91) {
+                showMessage("Massa tou!", "Hi ha massa coure. L'aliatge és massa tou. Afegeix una mica més d'estany.", "text-red-600", "bg-red-50 border-red-100");
+            } else {
+                showMessage("Massa trencadís!", "Hi ha massa estany. El bronze es trencarà fàcilment. Afegeix més coure!", "text-red-600", "bg-red-50 border-red-100");
+            }
+        }
+
+        function showMessage(title, text, colorClass, bgClass) {
+            messageBox.className = `p-6 text-center border-t-4 transition-all duration-500 ${bgClass}`;
+            messageTitle.className = `text-2xl font-black mb-1 ${colorClass}`;
+            messageTitle.textContent = title;
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden');
+        }
+
+        inputCopper.addEventListener('input', updateUI);
+        inputTin.addEventListener('input', updateUI);
+        btnMelt.addEventListener('click', handleMelt);
+        closeModal.addEventListener('click', () => {
+            successModal.style.display = 'none';
+        });
+
+        window.onload = updateUI;
+    </script>
+</body>
+</html>
